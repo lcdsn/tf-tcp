@@ -1,3 +1,4 @@
 venv/
 *.mid
 *.txt
+!requirements.txt
