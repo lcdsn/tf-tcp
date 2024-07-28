@@ -22,3 +22,9 @@ class File:
                 self.fileContent.writeFile(file)
         else:
             print("File content is not a MIDIFile object")
+
+    def __del__(self):
+        if self.fileContent:
+            del self.fileContent
+        del self.fileName
+        del self
