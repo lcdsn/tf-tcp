@@ -1,112 +1,119 @@
 import sys
-import random
+import pygame
 
-from midiutil import MIDIFile
+from UITextArea import TextArea
+from Button import IconButton
+from File import File
+from Translator import Translator
+from Player import Player
+from MidiInfo import Note, Rest, Control
 
-notes = {
-    "c": 60,
-    "d": 62,
-    "e": 64,
-    "f": 65,
-    "g": 67,
-    "a": 69,
-    "b": 71,
-}
+WIDTH = 600
+HEIGHT = 600
 
-track = 0
-channel = 0
-time = 0
-duration = 1
-tempo = 60
-bpm = 120
-default_volume = 100
-volume = default_volume
-pitch = 0
-octave = 0
-instrument = 0
+PLAYING = False
+WAITING = False
+
+startTime = None
 
 
-def createMidi(notesList, output_file):
-    midi = MIDIFile(1)
-    track = 0
-    time = 0
-    channel = 0
-
-    for note, volume, duration, instrument, bpm in notesList:
-        midi.addTempo(track, time, bpm)
-        midi.addProgramChange(track, channel, time, instrument)
-        midi.addNote(track, channel, note, time, duration, volume)
-        time += duration
-
-    with open(output_file, "wb") as output_file:
-        midi.writeFile(output_file)
-
-
-def translateText2MIDI(text: str) -> list[tuple]:
-    notesList = []
-    prevChar = None
-    global bpm, instrument, octave, volume, duration, time
-
-    for i in range(len(text)):
-        ch = text[i].lower()
-        if not ch:
-            break
-        if ch in notes:
-            notesList.append(
-                (notes[ch] + 12 * octave, volume, duration, instrument, bpm)
-            )
-            prevChar = ch
-        elif ch in "oiu":
-            if prevChar in notes:
-                notesList.append(
-                    (notes[prevChar] + 12 * octave, volume, duration, instrument, bpm)
-                )
-                prevChar = ch
-            else:
-                notesList.append((notes["c"] + 12 * octave, volume, duration, 124, bpm))
-        elif ch == " ":
-            notesList.append((0, 0, duration, 0, bpm))
-        elif ch == "+":
-            if text[i - 1] == "R":
-                octave += 1
-            elif text[i - 3 : i] == "BPM":
-                bpm += 80
-            else:
-                volume = min(127, 2 * volume)
-        elif ch == "-":
-            if text[i - 1] == "R":
-                octave -= 1
-            else:
-                volume = default_volume
-        elif ch == "?":
-            randomNote = "abcdefg"[random.randint(0, 6)]
-            notesList.append(
-                (notes[randomNote] + 12 * octave, volume, duration, instrument, bpm)
-            )
-        elif ch == "\n":
-            instrument = random.randint(0, 127)
-        elif ch == ";":
-            bpm = random.randint(1, 127)
-        else:
-            continue
-        time += 1
-    return notesList
+def callback():
+    global PLAYING
+    PLAYING = not PLAYING
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python %s [file-name] [output-name]" % sys.argv[0])
-        exit(0)
+    if len(sys.argv) != 2:
+        print("Usage: python main.py <inpug-file>")
+        sys.exit(1)
 
-    notesList = []
-    text = None
+    f = File(sys.argv[1])
+    f.readFile()
+    t = Translator()
+    p = Player()
 
-    try:
-        with open(sys.argv[1], "r") as f:
-            text = f.read()
+    pygame.init()
+    pygame.font.init()
+    pygame.display.set_caption("Conversor MIDI")
+    pygame.key.set_repeat(300, 50)
+    screen = pygame.display.set_mode((WIDTH, HEIGHT))
 
-    except FileNotFoundError:
-        print("File not found")
-        exit(0)
+    area = TextArea(
+        text=f.fileContent,
+        size=(WIDTH, HEIGHT),
+        padding=[15, 15, 45, 15],
+        backgroundColor=(255, 255, 255),
+        fontName="iosevka-regular.ttf",
+        fontSize=30,
+    )
 
-    createMidi(translateText2MIDI(text), sys.argv[2].split(".")[0] + ".mid")
+    play = IconButton(
+        pos=(WIDTH // 2 - 20, HEIGHT - 45),
+        size=(40, 40),
+        normalColor=(255, 255, 255),
+        selectedColor=(255, 255, 255),
+        clickedColor=(255, 255, 255),
+        iconPath="assets/icon-play.png",
+        callbackFunction=callback,
+    )
+
+    paused = IconButton(
+        pos=(WIDTH // 2 - 20, HEIGHT - 45),
+        size=(40, 40),
+        normalColor=(255, 255, 255),
+        selectedColor=(255, 255, 255),
+        clickedColor=(255, 255, 255),
+        iconPath="assets/icon-pause.png",
+        callbackFunction=callback,
+    )
+
+    running = True
+    while running:
+        button = paused if PLAYING else play
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    PLAYING = not PLAYING
+
+            if not PLAYING:
+                area.resizeText(event)
+
+            area.scrollBar(event)
+            area.moveCursor(event)
+
+        screen.fill((0, 0, 0))
+        screen.blit(area.draw(), dest=screen.get_rect().topleft)
+        screen.blit(button.draw(), dest=button.pos)
+
+        if PLAYING:
+            buffer = None
+            if area.cursorPosition < 4:
+                buffer = f.fileContent[: area.cursorPosition + 1]
+            else:
+                buffer = f.fileContent[
+                    area.cursorPosition - 3 : area.cursorPosition + 1
+                ]
+            note = t.convertTextToMIDI(buffer)
+            print(note)
+
+            if isinstance(note, Note) or isinstance(note, Rest):
+                if not WAITING:
+                    startTime = pygame.time.get_ticks()
+                    WAITING = True
+                    p.play(note)
+
+                else:
+                    if pygame.time.get_ticks() - startTime >= 1000 * (60 / note.bpm):
+                        WAITING = False
+                        p.stopNote(note)
+                        area.cursorPosition += 1
+            else:
+                area.cursorPosition += 1
+
+        pygame.time.Clock().tick(60)
+
+        pygame.display.update()
