@@ -97,6 +97,13 @@ if __name__ == "__main__":
                 buffer = f.fileContent[
                     area.cursorPosition - 3 : area.cursorPosition + 1
                 ]
+
+            if not buffer:
+                PLAYING = False
+                area.cursorPosition = 0
+                t = Translator()
+                continue
+
             note = t.convertTextToMIDI(buffer)
             print(note)
 
