@@ -18,3 +18,8 @@ class Rest:
 
     def __str__(self):
         return f"rest for {60 / self.bpm} seconds"
+
+
+class Control:
+    def __init__(self):
+        pass
