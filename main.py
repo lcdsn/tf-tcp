@@ -1,6 +1,8 @@
 import sys
 import pygame
 
+from os.path import splitext
+
 from UITextArea import TextArea
 from Button import IconButton
 from File import File
@@ -67,6 +69,8 @@ if __name__ == "__main__":
         callbackFunction=callback,
     )
 
+    note = None
+
     running = True
     while running:
         button = paused if PLAYING else play
@@ -79,6 +83,12 @@ if __name__ == "__main__":
                 if event.key == pygame.K_SPACE:
                     PLAYING = not PLAYING
 
+                if event.key == pygame.K_q:
+                    filename, _ = splitext(sys.argv[1])
+                    out = File(filename + ".mid", t.createMIDIObject())
+                    out.saveMIDIFile()
+                    running = False
+
             if not PLAYING:
                 area.resizeText(event)
 
@@ -90,37 +100,29 @@ if __name__ == "__main__":
         screen.blit(button.draw(), dest=button.pos)
 
         if PLAYING:
-            buffer = None
-            if area.cursorPosition < 4:
-                buffer = f.fileContent[: area.cursorPosition + 1]
-            else:
-                buffer = f.fileContent[
-                    area.cursorPosition - 3 : area.cursorPosition + 1
-                ]
+            if not WAITING:
+                buffer = f.getBuffer(area.cursorPosition)
+                if not buffer:
+                    PLAYING = False
+                    area.cursorPosition = 0
+                    t = Translator()
+                    continue
 
-            if not buffer:
-                PLAYING = False
-                area.cursorPosition = 0
-                t = Translator()
-                continue
-
-            note = t.convertTextToMIDI(buffer)
-            print(note)
-
-            if isinstance(note, Note) or isinstance(note, Rest):
-                if not WAITING:
+                note = t.convertTextToMIDI(buffer)
+                if isinstance(note, Note) or isinstance(note, Rest):
                     startTime = pygame.time.get_ticks()
                     WAITING = True
+                    print(note)
                     p.play(note)
+                elif isinstance(note, Control):
+                    area.cursorPosition += 1
+                    continue
 
-                else:
-                    if pygame.time.get_ticks() - startTime >= 1000 * (60 / note.bpm):
-                        WAITING = False
-                        p.stopNote(note)
-                        area.cursorPosition += 1
             else:
-                area.cursorPosition += 1
+                if pygame.time.get_ticks() - startTime >= 1000 * 60 / note.bpm:
+                    WAITING = False
+                    p.stopNote(note)
+                    area.cursorPosition += 1
 
         pygame.time.Clock().tick(60)
-
         pygame.display.update()
