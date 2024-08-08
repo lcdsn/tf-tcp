@@ -4,15 +4,17 @@ import pygame
 class Area:
     def __init__(
         self,
+        pos,
         contentSurface,
         size: tuple,
         padding=tuple([5] * 4),
         backgroundColor=(255, 255, 255),
         scrollBarColor=(30, 30, 30),
     ):
+        self.pos = pos
+        self.x, self.y = self.pos[0], self.pos[1]
         self.width, self.height = size
-        self.areaSurface = pygame.Surface((self.width, self.height))
-        if len(padding) == 1:
+        if type(padding) == int:
             self.padding = tuple([padding] * 4)
         elif len(padding) == 2:
             self.padding = tuple(padding * 2)
@@ -22,6 +24,7 @@ class Area:
             self.padding = padding
         self.backgroundColor = backgroundColor
         self.contentSurface = contentSurface
+        self.areaSurface = pygame.Surface((self.width, self.height))
         self.containerSurface = pygame.Surface(
             (
                 self.width - self.padding[1] - self.padding[3],
@@ -62,11 +65,16 @@ class Area:
             self.containerSurface,
             (self.padding[1], self.padding[0]),
         )
+
         if (
-            int(self.containerSurface.get_height() / self.contentSurface.get_height())
-            != 1
+            int(
+                (self.containerSurface.get_height() - self.padding[0] - self.padding[3])
+                / self.contentSurface.get_height()
+            )
+            > 1
         ):
             self.drawScrollBar()
+
         return self.areaSurface
 
     def drawScrollBar(self):
@@ -87,7 +95,7 @@ class Area:
                 self.visibleContentArea.y -= event.y * self.scrollBarVelocity
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.scrollBarRect.collidepoint(event.pos):
+            if self.scrollBarRect.move(self.pos).collidepoint(event.pos):
                 self.dragging = True
 
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:

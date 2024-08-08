@@ -6,6 +6,7 @@ import UI
 class TextArea(UI.Area):
     def __init__(
         self,
+        pos: tuple,
         text: str,
         size: tuple,
         fontName: str,
@@ -16,8 +17,8 @@ class TextArea(UI.Area):
         backgroundColor=(255, 255, 255),
         scrollBarColor=(30, 30, 30),
     ):
-
         super().__init__(
+            pos=pos,
             contentSurface=pygame.Surface(
                 size  # Superficie temporária pra instanciar a classe
             ),
@@ -38,6 +39,29 @@ class TextArea(UI.Area):
         self.cursorColor = cursorColor
         self.cursorVisibile = True
         self.text = text
+        self.cellHeight = self.font.get_linesize()
+        self.cellWidth = self.font.size("W")[0]
+        self.wrapppedLines = self.wrapText()
+        self.lenghtLines = [len(line) for line in self.wrapppedLines]
+
+        self.contentSurface = pygame.Surface(
+            (
+                self.visibleContentArea.width,
+                max(
+                    self.visibleContentArea.height,
+                    self.cellHeight * len(self.wrapppedLines),
+                ),
+            )
+        )
+        self.contentSurface.fill(self.backgroundColor)
+        self.scrollBarRect = None
+        self.updateScrollBar()
+
+    def restart(self):
+        self.cursorPosition = 0
+        self.cursorRow = 0
+        self.cursorCol = 0
+        self.cursorVisibile = True
         self.cellHeight = self.font.get_linesize()
         self.cellWidth = self.font.size("W")[0]
         self.wrapppedLines = self.wrapText()
@@ -115,10 +139,9 @@ class TextArea(UI.Area):
 
     def resizeText(self, event):
         mouse_pos = pygame.mouse.get_pos()
-        if (
-            event.type == pygame.KEYDOWN
-            and self.containerSurface.get_rect().collidepoint(mouse_pos)
-        ):
+        if event.type == pygame.KEYDOWN and self.containerSurface.get_rect().move(
+            self.pos
+        ).collidepoint(mouse_pos):
             keys = pygame.key.get_pressed()
             if event.mod & pygame.KMOD_SHIFT and event.mod & pygame.KMOD_CTRL:
                 if keys[pygame.K_EQUALS]:
@@ -137,10 +160,9 @@ class TextArea(UI.Area):
 
     def moveCursor(self, event):
         mouse_pos = pygame.mouse.get_pos()
-        if (
-            event.type == pygame.KEYDOWN
-            and self.containerSurface.get_rect().collidepoint(mouse_pos)
-        ):
+        if event.type == pygame.KEYDOWN and self.containerSurface.get_rect().move(
+            self.pos
+        ).collidepoint(mouse_pos):
             if not self.cursorVisibile:
                 self.scrollBack()
                 self.cursorVisibile = True
@@ -233,7 +255,7 @@ class TextArea(UI.Area):
             self.cursorVisibile = False
 
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-            if self.scrollBarRect.collidepoint(event.pos):
+            if self.scrollBarRect.move(self.pos).collidepoint(event.pos):
                 self.dragging = True
             self.cursorVisibile = False
 

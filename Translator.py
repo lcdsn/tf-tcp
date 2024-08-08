@@ -22,6 +22,7 @@ class Translator:
         }
         self.noteType = None
         self.translatedNotes = []
+        self.initialSilence = True
 
     def reset(self):
         self.instrument = 0
@@ -43,6 +44,7 @@ class Translator:
         if ch in self.notes:
             self.pitch = self.notes[ch] + 12 * self.octave
             self.noteType = Note
+            self.initialSilence = False
         elif ch in "oiu":
             if len(buffer) >= 2 and buffer[-2].lower() in self.notes:
                 prevChar = buffer[-2].lower()
@@ -54,7 +56,7 @@ class Translator:
         elif ch == " ":
             self.noteType = Rest
         elif ch == "+":
-            if len(buffer) >= 4 and buffer[-4:] == "BPM":
+            if len(buffer) >= 4 and buffer[-4:-1] == "BPM":
                 self.bpm += 80
                 self.noteType = Note
 
@@ -80,10 +82,12 @@ class Translator:
             self.noteType = Note
         elif ch == "\n":
             self.instrument = random.randint(1, 127)
-            print(f"Changing Instrument: {self.instrument}")
             self.noteType = Control
         else:
             pass
+
+        if self.initialSilence:
+            self.noteType = Rest
 
         midiInfo = None
         if self.noteType is Note:

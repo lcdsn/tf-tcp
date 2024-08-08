@@ -23,6 +23,18 @@ class File:
         else:
             print("File content is not a MIDIFile object")
 
+    def getBuffer(self, index):
+        if not self.fileContent:
+            print("File content is empty")
+            return None
+
+        buffer = None
+        if index < 4:
+            buffer = self.fileContent[: index + 1]
+        else:
+            buffer = self.fileContent[index - 3 : index + 1]
+        return buffer
+
     def __del__(self):
         if self.fileContent:
             del self.fileContent

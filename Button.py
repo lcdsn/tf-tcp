@@ -7,6 +7,7 @@ class TextButton:
         self,
         title: str,
         pos: tuple,
+        offset: tuple,
         size: tuple,
         normalColor,
         selectedColor,
@@ -19,6 +20,7 @@ class TextButton:
     ):
         self.title = title
         self.pos = pos
+        self.offset = offset
         self.width, self.height = size
         self.fontName = fontName
         self.normalColor = normalColor
@@ -50,11 +52,15 @@ class TextButton:
         )
 
     def handleEvent(self, event):
-        buttonSurfaceRect = self.buttonSurface.get_rect(topleft=self.pos)
+        buttonSurfaceRect = (
+            self.buttonSurface.get_rect().move(self.offset).move(self.pos)
+        )
+
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if buttonSurfaceRect.collidepoint(event.pos):
                 self.currentColor = self.clickedColor
-                self.callbackFunction()
+                if self.callbackFunction:
+                    self.callbackFunction(self)
 
         else:
             if buttonSurfaceRect.collidepoint(pygame.mouse.get_pos()):
@@ -109,15 +115,17 @@ class IconButton:
         self.buttonSurface = pygame.Surface((self.width, self.height))
 
     def handleEvent(self, event):
-        buttonSurfaceRect = self.buttonSurface.get_rect(topleft=self.pos)
+        buttonSurfaceRect = self.buttonSurface.get_rect().move(self.pos)
         if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if buttonSurfaceRect.collidepoint(event.pos):
                 self.currentColor = self.clickedColor
                 self.callbackFunction()
+                return buttonSurfaceRect
 
         else:
             if buttonSurfaceRect.collidepoint(pygame.mouse.get_pos()):
                 self.currentColor = self.selectedColor
+                return buttonSurfaceRect
             else:
                 self.currentColor = self.normalColor
 
