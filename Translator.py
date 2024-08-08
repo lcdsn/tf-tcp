@@ -1,4 +1,6 @@
 import random
+
+from pygame import midi
 from File import File
 from MidiInfo import Note, Rest, Control
 from midiutil import MIDIFile
@@ -92,8 +94,10 @@ class Translator:
         midiInfo = None
         if self.noteType is Note:
             midiInfo = Note(self.instrument, self.pitch, self.volume, self.bpm)
+            self.translatedNotes.append(midiInfo)
         elif self.noteType is Rest:
             midiInfo = Rest(self.bpm)
+            self.translatedNotes.append(midiInfo)
         else:
             midiInfo = Control()
 

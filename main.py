@@ -1,9 +1,9 @@
 import sys
-import pygame
-
 from os import listdir
-from os.path import isfile, join
+from os.path import join, splitext
 import mimetypes
+
+import pygame
 
 from UIListButton import ListButtons
 from UITextArea import TextArea
@@ -134,6 +134,19 @@ def main():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     PLAYING = not PLAYING
+
+                if event.key == pygame.K_q:
+                    t = Translator()
+                    for i in range(len(f.fileContent)):
+                        buffer = f.getBuffer(i)
+                        t.convertTextToMIDI(buffer)
+
+                    fileName, _ = splitext(f.fileName)
+                    outName = fileName + ".mid"
+                    out = File(outName, t.createMIDIObject())
+                    out.saveMIDIFile()
+
+                    running = False
 
             if not PLAYING:
                 area.resizeText(event)
